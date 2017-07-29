@@ -1,4 +1,4 @@
-package mongoidgenerator
+package bsonidgenerator
 
 import (
 	"encoding/binary"
