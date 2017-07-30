@@ -1,3 +1,5 @@
+// Package bsonidgenerator provides tools for generating sequences of bson ObjectIds
+// for use in test fixtures.
 package bsonidgenerator
 
 import (
@@ -41,7 +43,7 @@ func (conf Config) Validate() error {
 	return nil
 }
 
-// Returns the number of ObjectIds that will be produced by this Config
+// Returns the number of ObjectIds that will be produced by this Config.
 func (conf Config) Count() int {
 	return int(conf.Nmachines) * int(conf.NprocessesPerMachine) * int(conf.NitemsPerProcess)
 }
@@ -92,8 +94,8 @@ func (conf Config) SendOnChannel(oidChan chan<- bson.ObjectId) error {
 	return nil
 }
 
-// Create a bson ObjectId from the set of primitives needed to seed its state
-// From: http://bazaar.launchpad.net/+branch/mgo/v2/view/head:/bson/bson.go#L218
+// Create a bson ObjectId from the set of primitives needed to seed its state.
+// Originally from: http://bazaar.launchpad.net/+branch/mgo/v2/view/head:/bson/bson.go#L218
 func CreateObjectId(t uint32, machine uint32, pid uint16, inc uint32) bson.ObjectId {
 	var b [12]byte
 	// Timestamp, 4 bytes
