@@ -8,10 +8,10 @@ import (
 )
 
 type Config struct {
-	Time                 time.Time // We just use down to the seconds
-	Nmachines            uint32    // Holds 4 bytes, we only have 3
-	NprocessesPerMachine uint16    // Holds 2 bytes, we have 2
-	NitemsPerProcess     uint32    // Holds 4 bytes, we only have 3
+	Time                 time.Time // We only use down to the seconds
+	Nmachines            uint32    // Holds 4 bytes, we only need 3
+	NprocessesPerMachine uint16    // Holds 2 bytes, we need 2
+	NitemsPerProcess     uint32    // Holds 4 bytes, we only need 3
 }
 
 var (
@@ -29,7 +29,8 @@ func NewGenerator(t time.Time, nmachines uint32, nproc uint16, ninc uint32) (Con
 	return c, c.Validate()
 }
 
-// Checks that a Config is valid
+// Checks that a Config is valid.
+// A valid config has values of number of machines and number of items per process in an acceptable range.
 func (conf Config) Validate() error {
 	if conf.Nmachines > 1<<24 {
 		return ErrNMachinesTooLarge
@@ -91,7 +92,7 @@ func (conf Config) SendOnChannel(oidChan chan<- bson.ObjectId) error {
 	return nil
 }
 
-// Create an objct id from the set of primitives needed to seed its state
+// Create a bson ObjectId from the set of primitives needed to seed its state
 // From: http://bazaar.launchpad.net/+branch/mgo/v2/view/head:/bson/bson.go#L218
 func CreateObjectId(t uint32, machine uint32, pid uint16, inc uint32) bson.ObjectId {
 	var b [12]byte
