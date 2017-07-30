@@ -26,9 +26,9 @@ func TestInvalidConfigurations(t *testing.T) {
 	}
 }
 
-func TestExpectedCount(t *testing.T) {
+func TestExpectedCountOnChannel(t *testing.T) {
 	var err error
-	var c GeneratorConfig
+	var c Config
 
 	t.Run("Test 4,4,10", func(t *testing.T) {
 		c, err = NewGenerator(testTime, 4, 4, 10)
@@ -38,6 +38,7 @@ func TestExpectedCount(t *testing.T) {
 
 			stats := examineChannel(t, ochan)
 			assert.Equal(t, 160, stats.ntotal)
+			assert.Equal(t, stats.ntotal, c.Count())
 			assert.Equal(t, 4, stats.nmachines)
 			assert.Equal(t, 4, stats.nprocs)
 			assert.Equal(t, 10, stats.nincs)
@@ -53,6 +54,7 @@ func TestExpectedCount(t *testing.T) {
 
 			stats := examineChannel(t, ochan)
 			assert.Equal(t, 0, stats.ntotal)
+			assert.Equal(t, stats.ntotal, c.Count())
 			assert.Equal(t, 0, stats.nmachines)
 			assert.Equal(t, 0, stats.nprocs)
 			assert.Equal(t, 0, stats.nincs)
@@ -68,6 +70,7 @@ func TestExpectedCount(t *testing.T) {
 
 			stats := examineChannel(t, ochan)
 			assert.Equal(t, 500, stats.ntotal)
+			assert.Equal(t, stats.ntotal, c.Count())
 			assert.Equal(t, 1, stats.nmachines)
 			assert.Equal(t, 1, stats.nprocs)
 			assert.Equal(t, 500, stats.nincs)
@@ -76,7 +79,62 @@ func TestExpectedCount(t *testing.T) {
 	})
 }
 
-type IdChannelStats struct {
+func TestExpectedCountOnSlice(t *testing.T) {
+	var err error
+	var c Config
+
+	t.Run("Test 4,4,10", func(t *testing.T) {
+		c, err = NewGenerator(testTime, 4, 4, 10)
+		if assert.NoError(t, err) {
+			oids, err := c.Generate()
+			if assert.NoError(t, err) {
+				stats := examineSlice(t, oids)
+				assert.Equal(t, 160, stats.ntotal)
+				assert.Equal(t, stats.ntotal, c.Count())
+				assert.Equal(t, 4, stats.nmachines)
+				assert.Equal(t, 4, stats.nprocs)
+				assert.Equal(t, 10, stats.nincs)
+				assert.Equal(t, 1, stats.ntimes)
+			}
+		}
+	})
+
+	t.Run("Test 4,0,10", func(t *testing.T) {
+		c, err = NewGenerator(testTime, 4, 0, 10)
+		if assert.NoError(t, err) {
+			oids, err := c.Generate()
+			if assert.NoError(t, err) {
+				stats := examineSlice(t, oids)
+				assert.Equal(t, 0, stats.ntotal)
+				assert.Equal(t, stats.ntotal, c.Count())
+				assert.Equal(t, 0, stats.nmachines)
+				assert.Equal(t, 0, stats.nprocs)
+				assert.Equal(t, 0, stats.nincs)
+				assert.Equal(t, 0, stats.ntimes)
+			}
+		}
+	})
+
+	t.Run("Test 1,1,500", func(t *testing.T) {
+		c, err = NewGenerator(testTime, 1, 1, 500)
+		if assert.NoError(t, err) {
+			oids, err := c.Generate()
+			if assert.NoError(t, err) {
+				stats := examineSlice(t, oids)
+				assert.Equal(t, 500, stats.ntotal)
+				assert.Equal(t, stats.ntotal, c.Count())
+				assert.Equal(t, 1, stats.nmachines)
+				assert.Equal(t, 1, stats.nprocs)
+				assert.Equal(t, 500, stats.nincs)
+				assert.Equal(t, 1, stats.ntimes)
+			}
+		}
+	})
+}
+
+// Helper functions
+// Could be easily refactored to reduce redundancy...
+type IdStreamStats struct {
 	ntotal    int
 	nmachines int
 	nprocs    int
@@ -84,7 +142,7 @@ type IdChannelStats struct {
 	ntimes    int
 }
 
-func examineChannel(t *testing.T, oidChan <-chan bson.ObjectId) IdChannelStats {
+func examineChannel(t *testing.T, oidChan <-chan bson.ObjectId) IdStreamStats {
 	machines := make(map[uint32]bool)
 	procs := make(map[uint16]bool)
 	incs := make(map[int32]bool)
@@ -101,7 +159,33 @@ func examineChannel(t *testing.T, oidChan <-chan bson.ObjectId) IdChannelStats {
 		times[oid.Time()] = true
 	}
 
-	return IdChannelStats{
+	return IdStreamStats{
+		ntotal:    totalItems,
+		nmachines: len(machines),
+		nprocs:    len(procs),
+		nincs:     len(incs),
+		ntimes:    len(times),
+	}
+}
+
+func examineSlice(t *testing.T, oids []bson.ObjectId) IdStreamStats {
+	machines := make(map[uint32]bool)
+	procs := make(map[uint16]bool)
+	incs := make(map[int32]bool)
+	times := make(map[time.Time]bool)
+
+	// Drain channel and track stats
+	var totalItems int
+	for _, oid := range oids {
+		totalItems++
+		machineBts := oid.Machine()
+		machines[binary.BigEndian.Uint32([]byte{0, machineBts[1], machineBts[1], machineBts[2]})] = true
+		procs[oid.Pid()] = true
+		incs[oid.Counter()] = true
+		times[oid.Time()] = true
+	}
+
+	return IdStreamStats{
 		ntotal:    totalItems,
 		nmachines: len(machines),
 		nprocs:    len(procs),
